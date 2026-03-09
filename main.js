@@ -7,21 +7,27 @@ function createWindow() {
     height: 720,
     autoHideMenuBar: true,
     webPreferences: {
-      preload: path.join(__dirname, 'renderer.js')
+      nodeIntegration: false,
+      contextIsolation: true,
+      enableRemoteModule: false,
+      sandbox: true
     }
   });
 
-    win.loadFile('index.html');
+  win.loadFile('auth.html');
+
+  // Desativa dev tools em produção
+  // win.webContents.openDevTools();
 }
 
 app.whenReady().then(() => {
   createWindow();
 
-    app.on('activate', () => {
-      if (BrowserWindow.getAllWindows().length === 0) {
-        createWindow();
-      }
-    });
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
 });
 
 app.on('window-all-closed', () => {

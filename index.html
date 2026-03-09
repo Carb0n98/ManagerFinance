@@ -1,58 +1,568 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="style.css">
+    <script>
+        // Auth Guard – redireciona se não há sessão ou se é admin
+        (function () {
+            try {
+                var session = JSON.parse(localStorage.getItem('session') || 'null');
+                if (!session || !session.loggedIn) {
+                    window.location.replace('auth.html');
+                } else if (session.role === 'admin') {
+                    window.location.replace('admin.html');
+                }
+            } catch (e) {
+                window.location.replace('auth.html');
+            }
+        })();
+    </script>
     <title>Gerenciador Financeiro</title>
 </head>
+
 <body>
     <aside id="sidebar" class="sidebar">
         <button id="toggleSidebar" class="toggle-btn">☰</button>
         <nav>
-            <div class="nav-item sidebar-item active">
+            <div class="nav-item sidebar-item active" data-page="registrar">
                 <span class="icon-slot"><i data-lucide="wallet"></i></span>
                 <span class="label">Registrar Gastos</span>
             </div>
-            <div class="nav-item sidebar-item">
+            <div class="nav-item sidebar-item" data-page="entradas">
+                <span class="icon-slot"><i data-lucide="trending-up"></i></span>
+                <span class="label">Entradas</span>
+            </div>
+            <div class="nav-item sidebar-item" data-page="dashboard">
                 <span class="icon-slot"><i data-lucide="bar-chart-2"></i></span>
                 <span class="label">Dashboard</span>
             </div>
-            <div class="nav-item sidebar-item">
+            <div class="nav-item sidebar-item" data-page="config">
                 <span class="icon-slot"><i data-lucide="settings"></i></span>
                 <span class="label">Configurações</span>
             </div>
+            <div class="nav-item sidebar-item" data-page="perfil">
+                <span class="icon-slot"><i data-lucide="user-circle"></i></span>
+                <span class="label">Meu Perfil</span>
+            </div>
+            <div class="nav-item sidebar-item" data-page="conexoes">
+                <span class="icon-slot"><i data-lucide="users"></i></span>
+                <span class="label">Conexões</span>
+                <span class="nav-badge" id="conexoesBadge" style="display:none">0</span>
+            </div>
         </nav>
-        <div class="avatar-container">
-            <img src="./avatar.png" class="avatar" />
+        <div class="sidebar-user" id="sidebarUser">
+            <div class="avatar-container" id="sidebarAvatarBtn" title="Meu Perfil">
+                <img src="./avatar.png" class="avatar" id="sidebarAvatar" />
+            </div>
+            <span class="sidebar-username label" id="sidebarUsername">Usuário</span>
         </div>
     </aside>
-    
+
     <div class="main-container">
         <header class="top-bar">
-            <button id="toggleSidebar" class="toggle-btn mobile-only">☰</button>
+            <h1 class="page-title">Registrar Gastos</h1>
+            <div class="top-bar-actions">
+                <button id="notifBtn" class="notif-btn" onclick="toggleNotifPanel()" title="Notificações">
+                    <i data-lucide="bell"></i>
+                    <span class="notif-badge" id="notifBadge" style="display:none">0</span>
+                </button>
+                <button id="toggleSidebar" class="toggle-btn mobile-only">☰</button>
+            </div>
         </header>
 
-    <main class="content">
-        <div class="chart-wrapper">
-            <canvas id="donut"></canvas>
+        <main class="content">
+            <!-- PAGE: REGISTRAR GASTOS -->
+            <section id="page-registrar" class="page active">
+                <div class="form-container">
+                    <h2>Novo Gasto</h2>
+                    <form id="expenseForm">
+                        <div class="form-group">
+                            <label for="description">Descrição</label>
+                            <input type="text" id="description" placeholder="Ex: Almoço" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="amount">Valor (R$)</label>
+                            <input type="number" id="amount" placeholder="0.00" step="0.01" min="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="category">Categoria</label>
+                            <select id="category" required onchange="updateSubcategories()">
+                                <option value="">Selecione...</option>
+                                <option value="Lazer">🎉 Lazer</option>
+                                <option value="Fixo">🏠 Fixo</option>
+                                <option value="Outros">📦 Outros</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="subcategoryGroup" style="display:none">
+                            <label for="subcategory">Subcategoria</label>
+                            <select id="subcategory">
+                                <option value="">Selecione...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="date">Data</label>
+                            <input type="date" id="date" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Adicionar Gasto</button>
+                    </form>
 
-            <div class="legend">
-                <p><span class="dot essencial"></span> Essencial</p>
-                <p><span class="dot pessoal"></span> Pessoal</p>
-                <p><span class="dot outros"></span> Outros</p>
-            </div>
+                    <div class="expenses-list">
+                        <h3>Gastos Recentes</h3>
+                        <div id="expensesList"></div>
+                    </div>
+                </div>
+            </section>
 
-            <div id="status-popup" class="status-popup">
-                <span class="status-text"></span>
+            <!-- PAGE: ENTRADAS -->
+            <section id="page-entradas" class="page">
+                <div class="form-container">
+                    <form id="incomeForm">
+                        <div class="form-group">
+                            <label for="incomeDescription">Descrição *</label>
+                            <input type="text" id="incomeDescription" placeholder="Ex: Salário, Freelance..." required
+                                maxlength="100" />
+                        </div>
+                        <div class="form-group">
+                            <label for="incomeAmount">Valor (R$) *</label>
+                            <input type="number" id="incomeAmount" placeholder="0,00" step="0.01" min="0.01" required />
+                        </div>
+                        <div class="form-group">
+                            <label for="incomeCategory">Categoria</label>
+                            <select id="incomeCategory">
+                                <option value="Salário">Salário</option>
+                                <option value="Freelance">Freelance</option>
+                                <option value="Aluguel">Aluguel Recebido</option>
+                                <option value="Investimento">Investimento</option>
+                                <option value="Presente">Presente / Doação</option>
+                                <option value="Outros">Outros</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="incomeDate">Data *</label>
+                            <input type="date" id="incomeDate" required />
+                        </div>
+                        <button type="submit" class="btn btn-income">
+                            <i data-lucide="plus-circle"></i> Registrar Entrada
+                        </button>
+                    </form>
+
+                    <div class="expenses-list">
+                        <h3>Entradas Recentes</h3>
+                        <div id="incomesList"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PAGE: DASHBOARD -->
+            <section id="page-dashboard" class="page">
+                <div class="dashboard-container">
+                    <!-- Filtros e período -->
+                    <div class="dashboard-header">
+                        <div class="period-filter">
+                            <button class="period-btn active" data-period="month">Mês</button>
+                            <button class="period-btn" data-period="week">Semana</button>
+                            <button class="period-btn" data-period="year">Ano</button>
+                            <button class="period-btn" data-period="all">Tudo</button>
+                        </div>
+                        <div class="dashboard-actions">
+                            <button class="btn btn-small" id="exportBtn">ðŸ“¥ Exportar</button>
+                        </div>
+                    </div>
+
+                    <!-- Cards de estatísticas com tendências -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <h4>Total Gasto</h4>
+                                <span class="stat-trend" id="totalTrend">↗ +0%</span>
+                            </div>
+                            <p class="stat-value" id="totalExpense">R$ 0,00</p>
+                            <p class="stat-comparison" id="totalComparison">vs período anterior</p>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <h4>🏠 Fixo</h4>
+                                <span class="stat-trend" id="essentialTrend">↗ +0%</span>
+                            </div>
+                            <p class="stat-value" id="essentialAmount">R$ 0,00</p>
+                            <p class="stat-comparison" id="essentialComparison">33% do total</p>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <h4>🎉 Lazer</h4>
+                                <span class="stat-trend" id="personalTrend">↗ +0%</span>
+                            </div>
+                            <p class="stat-value" id="personalAmount">R$ 0,00</p>
+                            <p class="stat-comparison" id="personalComparison">33% do total</p>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <h4>Outros</h4>
+                                <span class="stat-trend" id="othersTrend">↗ +0%</span>
+                            </div>
+                            <p class="stat-value" id="othersAmount">R$ 0,00</p>
+                            <p class="stat-comparison" id="othersComparison">33% do total</p>
+                        </div>
+                        <div class="stat-card stat-card-income">
+                            <div class="stat-header">
+                                <h4>Total Receita</h4>
+                                <span class="stat-trend stat-trend-income" id="incomeTrend">↗ +0%</span>
+                            </div>
+                            <p class="stat-value stat-value-income" id="totalIncomeDisplay">R$ 0,00</p>
+                            <p class="stat-comparison" id="incomeComparison">0 entradas</p>
+                        </div>
+                        <div class="stat-card stat-card-balance">
+                            <div class="stat-header">
+                                <h4>Saldo do Período</h4>
+                                <i data-lucide="scale" style="width:14px;height:14px;color:var(--text-secondary)"></i>
+                            </div>
+                            <p class="stat-value" id="balanceDisplay">R$ 0,00</p>
+                            <p class="stat-comparison" id="balanceComparison">Receita − Gastos</p>
+                        </div>
+                    </div>
+
+                    <!-- Gráficos -->
+                    <div class="charts-grid">
+                        <!-- Donut Chart -->
+                        <div class="chart-wrapper">
+                            <h3>ðŸ“Š Distribuição por Categoria</h3>
+                            <div id="chartContainer">
+                                <canvas id="donut"></canvas>
+                            </div>
+                            <div class="legend">
+                                <p><span class="dot fixo"></span> Fixo</p>
+                                <p><span class="dot lazer"></span> Lazer</p>
+                                <p><span class="dot outros"></span> Outros</p>
+                            </div>
+                            <div id="emptyChart" class="empty-state" style="display: none; margin-top: 20px;">
+                                Nenhum gasto registrado ainda
+                            </div>
+                        </div>
+
+                        <!-- Bar Chart -->
+                        <div class="chart-wrapper">
+                            <h3>ðŸ“ˆ Gastos por Dia</h3>
+                            <canvas id="barChart"></canvas>
+                            <div id="emptyBarChart" class="empty-state" style="display: none; margin-top: 20px;">
+                                Nenhum gasto registrado ainda
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Insights -->
+                    <div class="insights-container">
+                        <h3>ðŸ’¡ Insights</h3>
+                        <div class="insights-grid">
+                            <div class="insight-card">
+                                <span class="insight-label">Maior Gasto</span>
+                                <span class="insight-value" id="largestExpense">-</span>
+                            </div>
+                            <div class="insight-card">
+                                <span class="insight-label">Categoria Top</span>
+                                <span class="insight-value" id="topCategory">-</span>
+                            </div>
+                            <div class="insight-card">
+                                <span class="insight-label">Ticket Médio</span>
+                                <span class="insight-value" id="averageExpense">-</span>
+                            </div>
+                            <div class="insight-card">
+                                <span class="insight-label">Total Transações</span>
+                                <span class="insight-value" id="totalTransactions">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PAGE: CONFIGURAÇÕES -->
+            <section id="page-config" class="page">
+                <div class="config-container">
+                    <h2>Configurações</h2>
+                    <div class="config-item">
+                        <h4>Moeda</h4>
+                        <select id="currencySelect">
+                            <option value="BRL">Real (R$)</option>
+                            <option value="USD">Dólar (US$)</option>
+                            <option value="EUR">Euro (€)</option>
+                        </select>
+                    </div>
+                    <div class="config-item">
+                        <h4>Tema</h4>
+                        <div class="theme-buttons">
+                            <button class="theme-btn active" data-theme="light">☀️ Claro</button>
+                            <button class="theme-btn" data-theme="dark">🌙 Escuro</button>
+                        </div>
+                    </div>
+                    <div class="config-item">
+                        <h4>Dados</h4>
+                        <button class="btn btn-danger" id="clearData">Limpar Todos os Dados</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PAGE: PERFIL -->
+            <section id="page-perfil" class="page">
+                <div class="perfil-container">
+                    <h2>Meu Perfil</h2>
+
+                    <!-- Avatar / Foto de perfil -->
+                    <div class="perfil-avatar-card">
+                        <div class="perfil-avatar-wrapper">
+                            <img id="perfilAvatarPreview" src="./avatar.png" class="perfil-avatar-img"
+                                alt="Foto de perfil" />
+                            <label for="perfilAvatarInput" class="perfil-avatar-overlay" title="Alterar foto">
+                                <i data-lucide="camera"></i>
+                                <span>Alterar foto</span>
+                            </label>
+                            <input type="file" id="perfilAvatarInput" accept="image/*" style="display:none" />
+                        </div>
+                        <div class="perfil-avatar-info">
+                            <p class="perfil-avatar-name" id="perfilAvatarName">Usuário</p>
+                            <p class="perfil-avatar-email" id="perfilAvatarEmail">–</p>
+                        </div>
+                    </div>
+
+                    <!-- Formulário de dados pessoais -->
+                    <div class="perfil-card">
+                        <h4><i data-lucide="user"></i> Dados Pessoais</h4>
+                        <div class="form-group">
+                            <label for="perfilNome">Nome</label>
+                            <input type="text" id="perfilNome" placeholder="Seu nome completo" maxlength="60" />
+                        </div>
+                        <div class="form-group">
+                            <label for="perfilEmail">E-mail</label>
+                            <input type="email" id="perfilEmail" placeholder="seu@email.com" maxlength="100" />
+                        </div>
+                    </div>
+
+                    <!-- Meta mensal -->
+                    <div class="perfil-card">
+                        <h4><i data-lucide="target"></i> Meta de Gastos</h4>
+                        <p class="perfil-card-desc">Defina um limite mensal de gastos para acompanhar seu orçamento.
+                        </p>
+                        <div class="form-group">
+                            <label for="perfilMeta">Meta Mensal (R$)</label>
+                            <input type="number" id="perfilMeta" placeholder="Ex: 2000.00" step="0.01" min="0" />
+                        </div>
+                        <div class="perfil-meta-bar-wrapper" id="perfilMetaBarWrapper" style="display:none">
+                            <div class="perfil-meta-bar-header">
+                                <span id="perfilMetaBarLabel">Gasto este mês</span>
+                                <span id="perfilMetaBarPercent">0%</span>
+                            </div>
+                            <div class="perfil-meta-bar-track">
+                                <div class="perfil-meta-bar-fill" id="perfilMetaBarFill"></div>
+                            </div>
+                            <p class="perfil-meta-bar-values" id="perfilMetaBarValues"></p>
+                        </div>
+                    </div>
+
+                    <!-- Botão salvar -->
+                    <button class="btn btn-primary" id="perfilSaveBtn" style="max-width:300px">
+                        <i data-lucide="save"></i> Salvar Perfil
+                    </button>
+
+                    <!-- Logout -->
+                    <div class="perfil-card perfil-logout-card">
+                        <h4><i data-lucide="log-out"></i> Sair da Conta</h4>
+                        <p class="perfil-card-desc">Encerra sua sessão e volta para a tela de login.</p>
+                        <button class="btn btn-logout" id="perfilLogoutBtn">Sair da Conta</button>
+                    </div>
+
+                    <!-- Zona perigosa -->
+                    <div class="perfil-card perfil-danger-card">
+                        <h4><i data-lucide="trash-2"></i> Zona de Risco</h4>
+                        <p class="perfil-card-desc">Esta ação removerá permanentemente todos os seus gastos
+                            registrados.
+                        </p>
+                        <button class="btn btn-danger" id="perfilClearDataBtn">Limpar Todos os Dados</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PAGE: CONEXÕES -->
+            <section id="page-conexoes" class="page">
+                <div class="conexoes-container">
+
+                    <!-- MEU ID -->
+                    <div class="cx-card cx-id-card">
+                        <div class="cx-id-header">
+                            <div>
+                                <h3><i data-lucide="fingerprint"></i> Meu ID de Conexão</h3>
+                                <p class="cx-sub">Compartilhe este ID para receber solicitações de conexão</p>
+                            </div>
+                        </div>
+                        <div class="cx-id-display">
+                            <code id="myConnectionId">carregando...</code>
+                            <button class="btn btn-icon-sm" id="copyIdBtn" title="Copiar ID">
+                                <i data-lucide="copy"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- CONECTAR POR ID -->
+                    <div class="cx-card">
+                        <h3><i data-lucide="link"></i> Conectar com Usuário</h3>
+                        <p class="cx-sub">Cole o ID do usuário que deseja conectar</p>
+                        <div class="cx-connect-form">
+                            <input type="text" id="connectTargetId" class="cx-input"
+                                placeholder="Cole o ID do usuário aqui..." maxlength="20" />
+                            <button class="btn btn-primary" id="sendConnectionBtn">
+                                <i data-lucide="send"></i> Enviar Solicitação
+                            </button>
+                        </div>
+                        <div id="sentRequestsList" class="cx-sent-list"></div>
+                    </div>
+
+                    <!-- SOLICITAÇÕES PENDENTES -->
+                    <div class="cx-card" id="pendingCard">
+                        <h3><i data-lucide="bell"></i> Solicitações Pendentes
+                            <span class="cx-badge" id="pendingBadge" style="display:none">0</span>
+                        </h3>
+                        <div id="pendingRequestsList" class="cx-list">
+                            <div class="cx-empty">Nenhuma solicitação pendente.</div>
+                        </div>
+                    </div>
+
+                    <!-- MINHAS CONEXÕES -->
+                    <div class="cx-card">
+                        <h3><i data-lucide="users"></i> Minhas Conexões
+                            <span id="connectionCount" class="cx-count"></span>
+                        </h3>
+                        <div id="connectionsList" class="cx-list">
+                            <div class="cx-empty">Você ainda não tem conexões.</div>
+                        </div>
+                    </div>
+
+                    <!-- SOLICITAÇÕES RECEBIDAS -->
+                    <div class="cx-card">
+                        <h3>
+                            <i data-lucide="inbox"></i> Solicitações de Compra Recebidas
+                            <span class="cx-badge" id="prReceivedBadge" style="display:none">0</span>
+                        </h3>
+                        <p class="cx-sub">Solicitações enviadas por suas conexões para sua aprovação</p>
+                        <div id="prReceivedList" class="cx-list">
+                            <div class="cx-empty">Nenhuma solicitação recebida.</div>
+                        </div>
+                    </div>
+
+                    <!-- MINHAS SOLICITAÇÕES -->
+                    <div class="cx-card">
+                        <h3><i data-lucide="send"></i> Minhas Solicitações de Compra</h3>
+                        <p class="cx-sub">Solicitações que você enviou para aprovação</p>
+                        <div id="prSentList" class="cx-list">
+                            <div class="cx-empty">Você ainda não enviou solicitações.</div>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- PAINEL DE NOTIFICAÇÕES -->
+    <div id="notifOverlay" class="notif-overlay" onclick="closeNotifPanel()"></div>
+    <div id="notifPanel" class="notif-panel">
+        <div class="notif-panel-header">
+            <h3><i data-lucide="bell"></i> Notificações</h3>
+            <div class="notif-header-actions">
+                <button class="notif-clear-btn" onclick="markAllNotifRead()" title="Marcar todas como lidas">
+                    <i data-lucide="check-check"></i>
+                </button>
+                <button class="notif-close-btn" onclick="closeNotifPanel()">×</button>
             </div>
         </div>
-    </main>
+        <div id="notifList" class="notif-list">
+            <div class="notif-empty">Nenhuma notificação.</div>
+        </div>
+    </div>
+
+    <!-- MODAL: Nova Solicitação de Compra -->
+    <div class="pr-overlay" id="prNewModal" style="display:none" onclick="closePRModals(event)">
+        <div class="pr-modal">
+            <div class="pr-modal-header">
+                <h2><span id="prModalTitle">Nova Solicitação de Compra</span></h2>
+                <p class="pr-modal-sub">Para: <strong id="prTargetName"></strong></p>
+                <button class="pr-close-btn" onclick="closePRModals()">×</button>
+            </div>
+            <div class="pr-modal-body" id="prNewForm">
+                <input type="hidden" id="prTargetId" />
+                <div class="pr-form-row">
+                    <div class="pr-form-group">
+                        <label for="prPurchase">O que deseja comprar? *</label>
+                        <input type="text" id="prPurchase" placeholder="Ex: Bolsa, Notebook..." maxlength="100" />
+                    </div>
+                    <div class="pr-form-group pr-form-group-sm">
+                        <label for="prAmount">Valor (R$) *</label>
+                        <input type="number" id="prAmount" placeholder="0,00" step="0.01" min="0.01" />
+                    </div>
+                </div>
+                <div class="pr-form-group">
+                    <label for="prReason">Motivo da compra *</label>
+                    <textarea id="prReason" placeholder="Por que você precisa desta compra?" rows="3"></textarea>
+                </div>
+                <div class="pr-form-row">
+                    <div class="pr-form-group">
+                        <label for="prPayment">Forma de pagamento *</label>
+                        <select id="prPayment">
+                            <option value="">Selecione...</option>
+                            <option value="Dinheiro">Dinheiro</option>
+                            <option value="Cartão de Débito">Cartão de Débito</option>
+                            <option value="Cartão de Crédito">Cartão de Crédito</option>
+                            <option value="PIX">PIX</option>
+                            <option value="Parcelado">Parcelado</option>
+                        </select>
+                    </div>
+                    <div class="pr-form-group">
+                        <label for="prCategory">Categoria</label>
+                        <select id="prCategory">
+                            <option value="Fixo">🏠 Fixo</option>
+                            <option value="Lazer" selected>🎉 Lazer</option>
+                            <option value="Outros">📦 Outros</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="pr-modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closePRModals()">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="submitPurchaseRequest()">
+                        <i data-lucide="send"></i> Enviar Solicitação
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Ação (reprovar / réplica / reprovação final) -->
+    <div class="pr-overlay" id="prActionModal" style="display:none" onclick="closePRModals(event)">
+        <div class="pr-modal pr-modal-sm">
+            <div class="pr-modal-header">
+                <h2 id="prActionTitle">Reprovar Solicitação</h2>
+                <button class="pr-close-btn" onclick="closePRModals()">×</button>
+            </div>
+            <div class="pr-modal-body">
+                <input type="hidden" id="prActionRequestId" />
+                <input type="hidden" id="prActionType" />
+                <p class="pr-action-sub" id="prActionSub"></p>
+                <div class="pr-form-group">
+                    <label id="prActionLabel">Motivo *</label>
+                    <textarea id="prActionText" rows="4" placeholder="Digite aqui..."></textarea>
+                </div>
+                <div class="pr-modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closePRModals()">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="prActionConfirmBtn">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/lucide"></script>
+    <script src="storage.js"></script>
     <script src="renderer.js"></script>
 
 </body>
+
 </html>

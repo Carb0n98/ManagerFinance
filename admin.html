@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="admin.css">
+    <title>Manager Finance — Painel Admin</title>
+    <script>
+        // Admin Guard — apenas admin pode acessar
+        (function () {
+            try {
+                var s = JSON.parse(localStorage.getItem('session') || 'null');
+                if (!s || !s.loggedIn) { window.location.replace('auth.html'); return; }
+                if (s.role !== 'admin') { window.location.replace('index.html'); }
+            } catch (e) { window.location.replace('auth.html'); }
+        })();
+    </script>
+</head>
+
+<body>
+
+    <div class="admin-layout">
+
+        <!-- ===== SIDEBAR ===== -->
+        <aside class="admin-sidebar">
+            <div class="admin-logo">
+                <svg width="36" height="36" viewBox="0 0 48 48" fill="none">
+                    <rect width="48" height="48" rx="12" fill="rgba(255,255,255,0.15)" />
+                    <path d="M14 30L20 22L26 26L34 16" stroke="white" stroke-width="2.5" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    <circle cx="34" cy="16" r="3" fill="white" />
+                    <path d="M14 36H34" stroke="white" stroke-width="2.5" stroke-linecap="round" />
+                </svg>
+                <div>
+                    <span class="logo-name">Manager Finance</span>
+                    <span class="logo-badge">Admin</span>
+                </div>
+            </div>
+
+            <nav class="admin-nav">
+                <div class="admin-nav-item active" data-page="dashboard" onclick="showPage('dashboard')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7" />
+                        <rect x="14" y="3" width="7" height="7" />
+                        <rect x="14" y="14" width="7" height="7" />
+                        <rect x="3" y="14" width="7" height="7" />
+                    </svg>
+                    <span>Dashboard</span>
+                </div>
+                <div class="admin-nav-item" data-page="usuarios" onclick="showPage('usuarios')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                    <span>Usuários</span>
+                </div>
+                <div class="admin-nav-item" data-page="codigos" onclick="showPage('codigos')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                    <span>Códigos</span>
+                </div>
+            </nav>
+
+            <div class="admin-sidebar-footer">
+                <div class="admin-footer-user">
+                    <div class="admin-footer-avatar" id="adminAvatar">A</div>
+                    <div class="admin-footer-info">
+                        <span class="admin-footer-name" id="adminName">Admin</span>
+                        <span class="admin-footer-email" id="adminEmail"></span>
+                    </div>
+                </div>
+                <button class="admin-logout-btn" onclick="adminLogout()" title="Sair">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                </button>
+            </div>
+        </aside>
+
+        <!-- ===== MAIN CONTENT ===== -->
+        <main class="admin-main">
+
+            <!-- Top header -->
+            <header class="admin-header">
+                <div>
+                    <h1 class="admin-page-title" id="adminPageTitle">Dashboard</h1>
+                    <p class="admin-page-sub" id="adminPageSub">Visão geral do sistema</p>
+                </div>
+                <div class="admin-header-actions" id="headerActions"></div>
+            </header>
+
+            <!-- ===== PAGE: DASHBOARD ===== -->
+            <section class="admin-page active" id="page-dashboard">
+                <!-- Stat cards -->
+                <div class="admin-stats-grid">
+                    <div class="admin-stat-card blue">
+                        <div class="stat-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                                <circle cx="9" cy="7" r="4" />
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Usuários</span>
+                            <span class="stat-value" id="statUsers">0</span>
+                        </div>
+                    </div>
+                    <div class="admin-stat-card teal">
+                        <div class="stat-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="11" width="18" height="11" rx="2" />
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Códigos Gerados</span>
+                            <span class="stat-value" id="statCodesTotal">0</span>
+                        </div>
+                    </div>
+                    <div class="admin-stat-card green">
+                        <div class="stat-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Códigos Disponíveis</span>
+                            <span class="stat-value" id="statCodesAvail">0</span>
+                        </div>
+                    </div>
+                    <div class="admin-stat-card red">
+                        <div class="stat-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10" />
+                                <polyline points="12 6 12 12 16 14" />
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Códigos Usados</span>
+                            <span class="stat-value" id="statCodesUsed">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent activity grid -->
+                <div class="admin-activity-grid">
+                    <div class="admin-card">
+                        <div class="admin-card-header">
+                            <h3>Registros Recentes</h3>
+                        </div>
+                        <div id="recentRegistrations" class="activity-list"></div>
+                    </div>
+                    <div class="admin-card">
+                        <div class="admin-card-header">
+                            <h3>Últimos Logins</h3>
+                        </div>
+                        <div id="recentLogins" class="activity-list"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== PAGE: USUÁRIOS ===== -->
+            <section class="admin-page" id="page-usuarios">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h3>Todos os Usuários</h3>
+                        <span class="badge-count" id="userCount">0 usuários</span>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="admin-table" id="usersTable">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>E-mail</th>
+                                    <th>Papel</th>
+                                    <th>Cadastrado em</th>
+                                    <th>Último Login</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== PAGE: CÓDIGOS ===== -->
+            <section class="admin-page" id="page-codigos">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h3>Códigos de Registro</h3>
+                        <div class="generate-controls">
+                            <select id="codeCountSelect" class="admin-select">
+                                <option value="1">1 código</option>
+                                <option value="3">3 códigos</option>
+                                <option value="5" selected>5 códigos</option>
+                                <option value="10">10 códigos</option>
+                            </select>
+                            <button class="btn-generate" onclick="generateCodes()">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="5" x2="12" y2="19" />
+                                    <line x1="5" y1="12" x2="19" y2="12" />
+                                </svg>
+                                Gerar Códigos
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="admin-table" id="codesTable">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Status</th>
+                                    <th>Gerado em</th>
+                                    <th>Gerado por</th>
+                                    <th>Usado por</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="codesTableBody"></tbody>
+                        </table>
+                    </div>
+                    <div id="codesEmpty" class="admin-empty" style="display:none">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48"
+                            height="48">
+                            <rect x="3" y="11" width="18" height="11" rx="2" />
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </svg>
+                        <p>Nenhum código gerado ainda.</p>
+                        <small>Clique em "Gerar Códigos" para criar novos.</small>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Toast notification -->
+    <div class="admin-toast" id="adminToast"></div>
+
+    <script src="storage.js"></script>
+    <script src="admin.js"></script>
+</body>
+
+</html>
